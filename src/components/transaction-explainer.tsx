@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator';
+import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Zap, Shield, Book, Loader2 } from "lucide-react";
