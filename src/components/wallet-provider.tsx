@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { AppConfig, UserSession, showConnect } from '@stacks/connect';
+import { AppConfig, UserSession, showConnect, openContractCall } from '@stacks/connect';
 import type { StacksTransaction, User, Mission } from '@/lib/types';
 import { StacksTestnet } from '@stacks/network';
 import { AnchorMode, PostConditionMode, stringUtf8CV } from '@stacks/transactions';
@@ -13,6 +13,7 @@ export interface WalletContextType {
   transactions: StacksTransaction[] | null;
   missions: Mission[] | null;
   isLoading: boolean;
+  isConnecting: boolean;
   isConnected: boolean;
   connect: (onFinish?: () => void) => void;
   disconnect: () => void;
@@ -33,14 +34,18 @@ export const userSession = new UserSession({ appConfig });
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [transactions, setTransactions] = useState<StacksTransaction[] | null>(null);
-  const [missions, setMissions] = useState<Mission[] | null>(null);
+  const [missions, setMissions] = useState<Mission[] | null>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
+    setIsLoading(true);
     try {
-      const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}`);
+      // The /v2/accounts endpoint needs the chain parameter
+      const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}?chain=testnet`);
       const balanceData = await balanceResponse.json();
 
+      // The /extended/v1/... endpoint knows the network from the URL subdomain
       const txsResponse = await fetch(`${HIRO_API_URL}/extended/v1/address/${stxAddress}/transactions`);
       const txsData = await txsResponse.json();
       const fetchedTransactions = txsData.results || [];
@@ -64,12 +69,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to fetch wallet data:", error);
       setUser(null);
       setTransactions(null);
-      setMissions(missionDefs);
+      setMissions(missionDefs.map(m => ({...m, completed: false})));
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   const handleSessionState = useCallback(async () => {
-    setIsLoading(true);
+    setIsConnecting(true);
     if (userSession.isSignInPending()) {
       try {
         await userSession.handlePendingSignIn();
@@ -84,8 +91,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       if (stxAddress) {
         await fetchWalletData(stxAddress);
       }
+    } else {
+        setUser(null);
+        setTransactions(null);
+        setMissions(missionDefs.map(m => ({...m, completed: false})));
+        setIsLoading(false);
     }
-    setIsLoading(false);
+    setIsConnecting(false);
   }, [fetchWalletData]);
 
   useEffect(() => {
@@ -94,13 +106,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshData = useCallback(async () => {
     if (user) {
-      setIsLoading(true);
       await fetchWalletData(user.address);
-      setIsLoading(false);
     }
   }, [user, fetchWalletData]);
 
   const connect = (onFinishCallback?: () => void) => {
+    setIsConnecting(true);
     showConnect({
       userSession,
       appDetails: {
@@ -113,6 +124,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       },
       onCancel: () => {
         console.log("Connection cancelled.");
+        setIsConnecting(false);
       },
     });
   };
@@ -121,7 +133,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     userSession.signUserOut();
     setUser(null);
     setTransactions(null);
-    setMissions(missionDefs);
+    setMissions(missionDefs.map(m => ({...m, completed: false})));
   };
 
   const claimBadge = async (): Promise<{ success: boolean, txId?: string, error?: string }> => {
@@ -130,17 +142,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return new Promise((resolve) => {
-      showConnect({
-        userSession,
-        appDetails: { name: 'SeedSage', icon: window.location.origin + '/logo.png' },
-        onFinish: (data) => {
-          resolve({ success: true, txId: data.txId });
-          setTimeout(() => refreshData(), 3000);
-        },
-        onCancel: () => {
-          resolve({ success: false, error: 'Transaction was cancelled by user.' });
-        },
-        txOptions: {
+        const txOptions = {
           contractAddress: BADGE_CONTRACT_ADDRESS,
           contractName: BADGE_CONTRACT_NAME,
           functionName: 'claim',
@@ -148,8 +150,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           network: NETWORK,
           anchorMode: AnchorMode.Any,
           postConditionMode: PostConditionMode.Deny,
-        },
-      });
+          onFinish: (data: { txId: string; }) => {
+            resolve({ success: true, txId: data.txId });
+            setTimeout(() => refreshData(), 5000);
+          },
+          onCancel: () => {
+            resolve({ success: false, error: 'Transaction was cancelled by user.' });
+          },
+        };
+        openContractCall(txOptions);
     });
   };
 
@@ -158,7 +167,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     transactions,
     missions,
     isLoading: isLoading,
-    isConnected: !!user,
+    isConnecting: isConnecting,
+    isConnected: !!user && !isLoading,
     connect,
     disconnect,
     claimBadge,
