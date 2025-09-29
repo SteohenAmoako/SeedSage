@@ -4,7 +4,7 @@ import React, { createContext, useState, useEffect, useCallback, ReactNode } fro
 import { AppConfig, UserSession, showConnect } from '@stacks/connect';
 import type { StacksTransaction, User, Mission } from '@/lib/types';
 import { StacksTestnet } from '@stacks/network';
-import { AnchorMode, PostConditionMode, stringUtf8 } from '@stacks/transactions';
+import { AnchorMode, PostConditionMode, stringUtf8CV } from '@stacks/transactions';
 import { missionDefs } from '@/lib/missions';
 
 interface WalletData {
@@ -136,7 +136,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           contractAddress: BADGE_CONTRACT_ADDRESS,
           contractName: BADGE_CONTRACT_NAME,
           functionName: 'claim',
-          functionArgs: [stringUtf8("Claiming my SeedSage badge!")],
+          functionArgs: [stringUtf8CV("Claiming my SeedSage badge!")],
           network: new StacksTestnet(),
           anchorMode: AnchorMode.Any,
           postConditionMode: PostConditionMode.Deny,
