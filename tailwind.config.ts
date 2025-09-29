@@ -1,12 +1,14 @@
 import type {Config} from 'tailwindcss';
+const { fontFamily } = require("tailwindcss/defaultTheme")
 
-export default {
+const config = {
   darkMode: ['class'],
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -17,9 +19,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['PT Sans', 'sans-serif'],
-        headline: ['PT Sans', 'sans-serif'],
-        code: ['Source Code Pro', 'monospace'],
+        sans: ["var(--font-sans)", ...fontFamily.sans],
+        headline: ["var(--font-sans)", ...fontFamily.sans],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -55,13 +56,6 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
-        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -71,7 +65,7 @@ export default {
       keyframes: {
         'accordion-down': {
           from: {
-            height: '0',
+            height: '0px',
           },
           to: {
             height: 'var(--radix-accordion-content-height)',
@@ -82,7 +76,7 @@ export default {
             height: 'var(--radix-accordion-content-height)',
           },
           to: {
-            height: '0',
+            height: '0px',
           },
         },
       },
@@ -94,3 +88,5 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+
+export default config
