@@ -123,10 +123,21 @@ export function ChatWidget() {
                             </Avatar>
                         )}
                         <div className={cn("rounded-lg p-3 max-w-[80%] text-sm", msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                            <div className="prose prose-sm text-foreground" dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br />') }} />
+
                             {msg.meta?.risk_level && (
                               <div className="mt-2">
-                                <Badge variant={msg.meta.risk_level === 'Low' ? 'default' : 'destructive'} className="bg-accent">{msg.meta.risk_level}</Badge>
+                                <Badge 
+                                  variant={msg.meta.risk_level === 'Low' ? 'default' : 'destructive'} 
+                                  className={cn(
+                                    "font-semibold",
+                                    msg.meta.risk_level === 'Low' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                                    msg.meta.risk_level === 'Medium' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                                    msg.meta.risk_level === 'High' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                                  )}
+                                >
+                                  {msg.meta.risk_level}
+                                </Badge>
                               </div>
                             )}
                         </div>
