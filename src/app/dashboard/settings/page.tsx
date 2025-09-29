@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +8,53 @@ import { Label } from "@/components/ui/label";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getProfile, saveProfile } from "@/services/profile";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, disconnect } = useWallet();
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+  
+  const [username, setUsername] = React.useState('');
+  const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    async function fetchProfile() {
+      if (user?.address) {
+        setIsLoadingProfile(true);
+        const profile = await getProfile(user.address);
+        if (profile?.username) {
+          setUsername(profile.username);
+        }
+        setIsLoadingProfile(false);
+      }
+    }
+    fetchProfile();
+  }, [user?.address]);
+
+  const handleSaveProfile = async () => {
+    if (!user?.address) return;
+    setIsSaving(true);
+    const success = await saveProfile(user.address, { username });
+    setIsSaving(false);
+    
+    if (success) {
+      toast({
+        title: "Profile Saved",
+        description: "Your username has been updated.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save your profile. Please try again.",
+      });
+    }
+  };
+
 
   if (!user) {
     return (
@@ -36,15 +80,23 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <CardDescription>
-            This is how others will see you on the site.
+            This username will be associated with your wallet address.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" placeholder="Satoshi" defaultValue="Satoshi" />
-             <p className="text-xs text-muted-foreground">Profile data is not saved in this demo.</p>
-          </div>
+          {isLoadingProfile ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input 
+                id="username" 
+                placeholder="Satoshi" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Wallet Address</Label>
             <Input value={user.address} readOnly disabled />
@@ -53,6 +105,10 @@ export default function SettingsPage() {
             <Label>Network</Label>
             <Input value={user.network} readOnly disabled />
           </div>
+           <Button onClick={handleSaveProfile} disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSaving ? "Saving..." : "Save Profile"}
+          </Button>
         </CardContent>
       </Card>
 
