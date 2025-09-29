@@ -17,9 +17,8 @@ interface WalletData {
 export interface WalletContextType extends WalletData {
   isConnected: boolean;
   isConnecting: boolean;
-  hasInitialised: boolean;
   isLoading: boolean;
-  connect: () => void;
+  connect: (onFinish?: () => void) => void;
   disconnect: () => void;
   claimBadge: () => Promise<{ success: boolean, txId?: string, error?: string }>;
   refreshData: () => Promise<void>;
@@ -39,7 +38,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [transactions, setTransactions] = useState<StacksTransaction[] | null>(null);
   const [missions, setMissions] = useState<Mission[]>(missionDefs);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasInitialised, setHasInitialised] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
@@ -74,7 +72,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setMissions(missionDefs);
     } finally {
       setIsLoading(false);
-      setHasInitialised(true);
     }
   }, []);
   
@@ -85,7 +82,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [user, fetchWalletData]);
 
 
-  const connectWallet = () => {
+  const connectWallet = (onFinishCallback?: () => void) => {
     setIsConnecting(true);
     showConnect({
       userSession,
@@ -96,13 +93,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       onFinish: (data) => {
         const stxAddress = data.stacksAddress.testnet;
         if (stxAddress) {
-          fetchWalletData(stxAddress);
+          fetchWalletData(stxAddress).then(() => {
+             if (onFinishCallback) onFinishCallback();
+          });
         }
         setIsConnecting(false);
       },
       onCancel: () => {
         setIsConnecting(false);
-        setHasInitialised(true);
         setIsLoading(false);
       },
     });
@@ -115,7 +113,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setTransactions([]);
     setMissions(missionDefs);
-    setHasInitialised(true);
   };
 
   const claimBadge = async (): Promise<{ success: boolean, txId?: string, error?: string }> => {
@@ -160,7 +157,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (error) {
           console.error("Error handling pending sign in:", error);
-          setHasInitialised(true);
         } finally {
            setIsConnecting(false);
         }
@@ -170,11 +166,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           await fetchWalletData(userData.profile.stxAddress.testnet);
         } else {
            setIsLoading(false);
-           setHasInitialised(true);
         }
       } else {
         setIsLoading(false);
-        setHasInitialised(true);
       }
     };
 
@@ -186,7 +180,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     transactions,
     missions,
     isLoading,
-    hasInitialised,
     isConnected: !!user,
     isConnecting,
     connect: connectWallet,

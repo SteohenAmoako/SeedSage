@@ -4,17 +4,16 @@ import { Button } from "./ui/button";
 import { useWallet } from "@/hooks/use-wallet";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export function WalletConnectButton() {
     const { connect, isConnecting, isConnected } = useWallet();
     const router = useRouter();
 
-    useEffect(() => {
-        if (isConnected && !isConnecting) {
+    const handleConnect = () => {
+        connect(() => {
             router.push('/dashboard');
-        }
-    }, [isConnected, isConnecting, router]);
+        });
+    }
 
     if (isConnected) {
         return (
@@ -25,7 +24,7 @@ export function WalletConnectButton() {
     }
 
     return (
-        <Button onClick={connect} disabled={isConnecting} size="lg" className="font-bold">
+        <Button onClick={handleConnect} disabled={isConnecting} size="lg" className="font-bold">
             {isConnecting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
             {isConnecting ? 'Connecting...' : 'Connect Wallet'}
         </Button>

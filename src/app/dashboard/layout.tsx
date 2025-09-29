@@ -13,9 +13,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isConnected, isConnecting, hasInitialised } = useWallet();
+  const { isConnected, isLoading } = useWallet();
 
-  if (!hasInitialised || isConnecting) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-secondary/50">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
