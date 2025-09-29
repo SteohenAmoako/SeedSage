@@ -2,10 +2,10 @@
 
 import { explainTransaction, ExplainTransactionInput } from '@/ai/flows/explain-stacks-transactions';
 import { contextualAIChatAssistant, ContextualAIChatAssistantInput } from '@/ai/flows/contextual-ai-chat-assistant';
+import { sendTestnetStx, FaucetInput } from '@/ai/flows/faucet-flow';
 
 export async function explainTransactionAction(input: ExplainTransactionInput) {
   try {
-    // In a real app, you might add extra validation or logging here
     const output = await explainTransaction(input);
     return { success: true, data: output };
   } catch (error) {
@@ -22,4 +22,14 @@ export async function getChatResponseAction(input: ContextualAIChatAssistantInpu
     console.error("Error in getChatResponseAction:", error);
     return { success: false, error: "Failed to get response from AI assistant." };
   }
+}
+
+export async function getFaucetStxAction(input: FaucetInput) {
+    try {
+        const output = await sendTestnetStx(input);
+        return { success: true, data: output };
+    } catch (error) {
+        console.error("Error in getFaucetStxAction:", error);
+        return { success: false, error: "Failed to send testnet STX." };
+    }
 }
