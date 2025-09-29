@@ -3,7 +3,7 @@ import { Wallet } from "lucide-react";
 import type { User } from "@/lib/types";
 
 export function BalanceCard({ user }: { user: User }) {
-  const stxBalance = user.balance.stx.balance / 1_000_000; // Convert from micro-STX
+  const stxBalance = user.balance?.stx?.balance ? parseFloat(user.balance.stx.balance) / 1_000_000 : 0;
   
   return (
     <Card>
