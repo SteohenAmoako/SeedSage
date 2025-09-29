@@ -33,7 +33,7 @@ const appConfig = new AppConfig(['store_write', 'publish_data']);
 const userSession = new UserSession({ appConfig });
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [walletData, setWalletData] = useState<WalletData>({
     user: null,
     transactions: [],
@@ -77,29 +77,25 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const onFinish = (payload: any) => {
-    const profile = payload.userSession.loadUserData();
-    const stxAddress = profile.profile.stxAddress.testnet;
-    if (stxAddress) {
-      fetchWalletData(stxAddress);
-    }
-    setIsConnecting(false);
-  };
-
-  const onCancel = () => {
-    setIsConnecting(false);
-    setWalletData(prev => ({...prev, hasInitialised: true, isLoading: false}));
-  };
-
   const connectWallet = () => {
     setIsConnecting(true);
     showConnect({
       userSession,
-      onFinish,
-      onCancel,
       appDetails: {
         name: 'SeedSage',
         icon: window.location.origin + '/logo.png',
+      },
+      onFinish: (payload) => {
+        const profile = payload.userSession.loadUserData();
+        const stxAddress = profile.profile.stxAddress.testnet;
+        if (stxAddress) {
+          fetchWalletData(stxAddress);
+        }
+        setIsConnecting(false);
+      },
+      onCancel: () => {
+        setIsConnecting(false);
+        setWalletData(prev => ({...prev, hasInitialised: true, isLoading: false}));
       },
     });
   };
@@ -146,19 +142,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    if (userSession.isSignInPending()) {
-      userSession.handlePendingSignIn().then((userData) => {
-        if (userData.profile?.stxAddress?.testnet) {
-          fetchWalletData(userData.profile.stxAddress.testnet);
-        }
-         setIsConnecting(false);
-      });
-    } else if (userSession.isUserSignedIn()) {
+    if (userSession.isUserSignedIn()) {
       const userData = userSession.loadUserData();
       if (userData.profile?.stxAddress?.testnet) {
         fetchWalletData(userData.profile.stxAddress.testnet);
+      } else {
+        setIsConnecting(false);
+        setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
       }
-       setIsConnecting(false);
     } else {
         setIsConnecting(false);
         setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
