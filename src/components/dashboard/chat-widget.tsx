@@ -33,7 +33,7 @@ export function ChatWidget() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !user || !transactions) return;
+    if (!input.trim() || isLoading || !user || !user.balance || !transactions) return;
 
     const newUserMessage: ChatMessage = { id: Date.now().toString(), role: 'user', content: input };
     setMessages(prev => [...prev, newUserMessage]);
