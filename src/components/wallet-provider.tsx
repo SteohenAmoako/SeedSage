@@ -16,7 +16,6 @@ interface WalletData {
 
 export interface WalletContextType extends WalletData {
   isConnected: boolean;
-  isConnecting: boolean;
   isLoading: boolean;
   connect: (onFinish?: () => void) => void;
   disconnect: () => void;
@@ -38,7 +37,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [transactions, setTransactions] = useState<StacksTransaction[] | null>(null);
   const [missions, setMissions] = useState<Mission[]>(missionDefs);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnecting, setIsConnecting] = useState(false);
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
     setIsLoading(true);
@@ -83,24 +81,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
 
   const connectWallet = (onFinishCallback?: () => void) => {
-    setIsConnecting(true);
+    setIsLoading(true);
     showConnect({
       userSession,
       appDetails: {
         name: 'SeedSage',
         icon: window.location.origin + '/logo.png',
       },
-      onFinish: (data) => {
-        const stxAddress = data.stacksAddress.testnet;
+      onFinish: () => {
+        const userData = userSession.loadUserData();
+        const stxAddress = userData.profile?.stxAddress?.testnet;
         if (stxAddress) {
           fetchWalletData(stxAddress).then(() => {
              if (onFinishCallback) onFinishCallback();
           });
         }
-        setIsConnecting(false);
+        setIsLoading(false);
       },
       onCancel: () => {
-        setIsConnecting(false);
         setIsLoading(false);
       },
     });
@@ -146,21 +144,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleUserSession = async () => {
-      setIsLoading(true);
-
       if (userSession.isSignInPending()) {
-        setIsConnecting(true);
         try {
-          const userData = await userSession.handlePendingSignIn();
-          if (userData?.profile?.stxAddress?.testnet) {
-            await fetchWalletData(userData.profile.stxAddress.testnet);
-          }
+          await userSession.handlePendingSignIn();
         } catch (error) {
           console.error("Error handling pending sign in:", error);
-        } finally {
-           setIsConnecting(false);
         }
-      } else if (userSession.isUserSignedIn()) {
+      }
+      
+      if (userSession.isUserSignedIn()) {
         const userData = userSession.loadUserData();
         if (userData.profile?.stxAddress?.testnet) {
           await fetchWalletData(userData.profile.stxAddress.testnet);
@@ -181,7 +173,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     missions,
     isLoading,
     isConnected: !!user,
-    isConnecting,
     connect: connectWallet,
     disconnect: disconnectWallet,
     claimBadge,
