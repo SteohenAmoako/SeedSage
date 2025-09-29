@@ -22,7 +22,7 @@ export interface WalletContextType extends WalletData {
   connect: () => void;
   disconnect: () => void;
   claimBadge: () => Promise<{ success: boolean, txId?: string, error?: string }>;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
 }
 
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -78,9 +78,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
   
-  const refreshData = useCallback(() => {
+  const refreshData = useCallback(async () => {
     if (user) {
-      fetchWalletData(user.address);
+      await fetchWalletData(user.address);
     }
   }, [user, fetchWalletData]);
 

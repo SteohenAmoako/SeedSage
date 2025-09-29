@@ -7,6 +7,7 @@ import {
   Zap,
   Settings,
   BookOpen,
+  RefreshCw,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -29,16 +30,33 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/icons";
 import { useWallet } from "@/hooks/use-wallet";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export function DashboardHeader() {
-  const { disconnect } = useWallet();
+  const { disconnect, refreshData } = useWallet();
   const pathname = usePathname();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { toast } = useToast();
   
   const getBreadcrumbPage = () => {
     const path = pathname.split('/').pop();
     if (!path || path === 'dashboard') return 'Overview';
     return path.charAt(0).toUpperCase() + path.slice(1);
   }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshData();
+    // Use a timeout to give the UI a moment to update
+    setTimeout(() => {
+        setIsRefreshing(false);
+        toast({
+            title: "Data Refreshed",
+            description: "Your balance and transactions have been updated.",
+        });
+    }, 500);
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -103,6 +121,10 @@ export function DashboardHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto flex-1 md:grow-0" />
+       <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span className="ml-2 hidden sm:inline">Refresh</span>
+        </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
