@@ -1,12 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// TODO: Replace with your Supabase project URL and anon key
-const supabaseUrl = 'PASTE_YOUR_SUPABASE_URL_HERE';
-const supabaseAnonKey = 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-if (supabaseUrl === 'PASTE_YOUR_SUPABASE_URL_HERE' || supabaseAnonKey === 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE') {
-    console.warn('Supabase credentials are not configured. Please update src/lib/supabase.ts');
+let supabase: SupabaseClient | null = null;
+
+if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'PASTE_YOUR_SUPABASE_URL_HERE') {
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+  console.warn('Supabase credentials are not configured. Profile features will be disabled. Please update your environment variables.');
 }
 
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase };

@@ -5,6 +5,8 @@ export interface UserProfile {
 }
 
 export const getProfile = async (userId: string): Promise<UserProfile | null> => {
+  if (!supabase) return null; // Gracefully handle no-config case
+
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -29,6 +31,8 @@ export const getProfile = async (userId: string): Promise<UserProfile | null> =>
 };
 
 export const saveProfile = async (userId: string, profile: UserProfile): Promise<boolean> => {
+  if (!supabase) return false; // Gracefully handle no-config case
+  
   try {
     const { error } = await supabase
       .from('profiles')
