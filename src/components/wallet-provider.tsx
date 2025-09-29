@@ -155,7 +155,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           fetchWalletData(userData.profile.stxAddress.testnet);
         }
          setIsConnecting(false);
-      }).catch(() => setIsConnecting(false));
+      }).catch(() => {
+        setIsConnecting(false);
+        setWalletData(prev => ({ ...prev, isLoading: false, hasInitialised: true }));
+      });
     } else if (userSession.isUserSignedIn()) {
       const userData = userSession.loadUserData();
       if (userData.profile?.stxAddress?.testnet) {
