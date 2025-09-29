@@ -19,7 +19,7 @@ const educationResources = [
     title: "Choosing a Stacks Wallet",
     description: "Explore the different wallet options available in the Stacks ecosystem.",
     icon: Wallet,
-    link: "https://stacks.org/wallet"
+    link: "https://www.stacks.co/wallet"
   },
   {
     title: "Intro to Decentralized Apps (dApps)",
