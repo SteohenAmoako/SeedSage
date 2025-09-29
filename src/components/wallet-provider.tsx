@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
@@ -34,7 +35,7 @@ const appConfig = new AppConfig(['store_write', 'publish_data']);
 const userSession = new UserSession({ appConfig });
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [walletData, setWalletData] = useState<WalletData>({
     user: null,
     transactions: [],
@@ -86,6 +87,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
 
   const connectWallet = () => {
+    setIsConnecting(true);
     showConnect({
       userSession,
       appDetails: {
@@ -130,6 +132,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         appDetails: { name: 'SeedSage', icon: window.location.origin + '/logo.png' },
         onFinish: (data) => {
           resolve({ success: true, txId: data.txId });
+          setTimeout(() => refreshData(), 3000);
         },
         onCancel: () => {
           resolve({ success: false, error: 'Transaction was cancelled by user.' });
@@ -148,29 +151,37 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    if (userSession.isSignInPending()) {
+    const handleUserSession = async () => {
+      setWalletData(prev => ({ ...prev, isLoading: true }));
       setIsConnecting(true);
-      userSession.handlePendingSignIn().then(userData => {
-        if(userData?.profile?.stxAddress?.testnet) {
-          fetchWalletData(userData.profile.stxAddress.testnet);
+
+      if (userSession.isSignInPending()) {
+        try {
+          const userData = await userSession.handlePendingSignIn();
+          if (userData?.profile?.stxAddress?.testnet) {
+            await fetchWalletData(userData.profile.stxAddress.testnet);
+          }
+        } catch (error) {
+          console.error("Error handling pending sign in:", error);
+        } finally {
+           setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
+           setIsConnecting(false);
         }
-         setIsConnecting(false);
-      }).catch(() => {
-        setIsConnecting(false);
-        setWalletData(prev => ({ ...prev, isLoading: false, hasInitialised: true }));
-      });
-    } else if (userSession.isUserSignedIn()) {
-      const userData = userSession.loadUserData();
-      if (userData.profile?.stxAddress?.testnet) {
-        fetchWalletData(userData.profile.stxAddress.testnet);
+      } else if (userSession.isUserSignedIn()) {
+        const userData = userSession.loadUserData();
+        if (userData.profile?.stxAddress?.testnet) {
+          await fetchWalletData(userData.profile.stxAddress.testnet);
+        } else {
+           setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
+           setIsConnecting(false);
+        }
       } else {
-        setIsConnecting(false);
         setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
+        setIsConnecting(false);
       }
-    } else {
-        setIsConnecting(false);
-        setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
-    }
+    };
+
+    handleUserSession();
   }, [fetchWalletData]);
 
   const value: WalletContextType = {
