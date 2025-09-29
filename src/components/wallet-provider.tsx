@@ -84,7 +84,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
 
   const connectWallet = (onFinishCallback?: () => void) => {
-    setIsConnecting(true);
     showConnect({
       userSession,
       appDetails: {
@@ -99,7 +98,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
              if (onFinishCallback) onFinishCallback();
           });
         }
-        setIsConnecting(false);
       },
       onCancel: () => {
         setIsConnecting(false);
@@ -147,7 +145,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleUserSession = async () => {
-      setIsConnecting(true);
       if (userSession.isSignInPending()) {
         try {
           await userSession.handlePendingSignIn();
@@ -165,12 +162,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
       
       setIsConnecting(false);
-      setIsLoading(false);
     };
 
     handleUserSession();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchWalletData]);
 
   const value: WalletContextType = {
     user,
