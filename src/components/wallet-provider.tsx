@@ -12,13 +12,13 @@ interface WalletData {
   user: User | null;
   transactions: StacksTransaction[] | null;
   missions: Mission[];
-  isLoading: boolean;
-  hasInitialised: boolean;
 }
 
 export interface WalletContextType extends WalletData {
   isConnected: boolean;
   isConnecting: boolean;
+  hasInitialised: boolean;
+  isLoading: boolean;
   connect: () => void;
   disconnect: () => void;
   claimBadge: () => Promise<{ success: boolean, txId?: string, error?: string }>;
@@ -35,26 +35,24 @@ const appConfig = new AppConfig(['store_write', 'publish_data']);
 const userSession = new UserSession({ appConfig });
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [transactions, setTransactions] = useState<StacksTransaction[] | null>(null);
+  const [missions, setMissions] = useState<Mission[]>(missionDefs);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasInitialised, setHasInitialised] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [walletData, setWalletData] = useState<WalletData>({
-    user: null,
-    transactions: [],
-    missions: missionDefs,
-    isLoading: true,
-    hasInitialised: false,
-  });
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
-    setWalletData(prev => ({ ...prev, isLoading: true }));
+    setIsLoading(true);
     try {
       const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}`);
       const balanceData = await balanceResponse.json();
 
       const txsResponse = await fetch(`${HIRO_API_URL}/extended/v1/address/${stxAddress}/transactions`);
       const txsData = await txsResponse.json();
-      const transactions = txsData.results;
+      const fetchedTransactions = txsData.results;
 
-      const user: User = {
+      const userData: User = {
         address: stxAddress,
         network: 'testnet',
         balance: balanceData,
@@ -62,28 +60,29 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       
       const verifiedMissions = missionDefs.map(mission => ({
         ...mission,
-        completed: mission.verify(transactions, user.address),
+        completed: mission.verify(fetchedTransactions, userData.address),
       }));
 
-      setWalletData({
-        user,
-        transactions,
-        missions: verifiedMissions,
-        isLoading: false,
-        hasInitialised: true,
-      });
+      setUser(userData);
+      setTransactions(fetchedTransactions);
+      setMissions(verifiedMissions);
 
     } catch (error) {
       console.error("Failed to fetch wallet data:", error);
-      setWalletData(prev => ({ ...prev, isLoading: false, hasInitialised: true, user: null, transactions: [], missions: missionDefs }));
+      setUser(null);
+      setTransactions([]);
+      setMissions(missionDefs);
+    } finally {
+      setIsLoading(false);
+      setHasInitialised(true);
     }
   }, []);
   
   const refreshData = useCallback(() => {
-    if (walletData.user) {
-      fetchWalletData(walletData.user.address);
+    if (user) {
+      fetchWalletData(user.address);
     }
-  }, [walletData.user, fetchWalletData]);
+  }, [user, fetchWalletData]);
 
 
   const connectWallet = () => {
@@ -103,7 +102,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       },
       onCancel: () => {
         setIsConnecting(false);
-        setWalletData(prev => ({...prev, hasInitialised: true, isLoading: false}));
+        setHasInitialised(true);
+        setIsLoading(false);
       },
     });
   };
@@ -112,17 +112,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (userSession.isUserSignedIn()) {
       userSession.signUserOut();
     }
-    setWalletData({
-      user: null,
-      transactions: [],
-      missions: missionDefs,
-      isLoading: false,
-      hasInitialised: true,
-    });
+    setUser(null);
+    setTransactions([]);
+    setMissions(missionDefs);
+    setHasInitialised(true);
   };
 
   const claimBadge = async (): Promise<{ success: boolean, txId?: string, error?: string }> => {
-    if (!walletData.user) {
+    if (!user) {
       return { success: false, error: 'User not connected' };
     }
 
@@ -152,10 +149,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleUserSession = async () => {
-      setWalletData(prev => ({ ...prev, isLoading: true }));
-      setIsConnecting(true);
+      setIsLoading(true);
 
       if (userSession.isSignInPending()) {
+        setIsConnecting(true);
         try {
           const userData = await userSession.handlePendingSignIn();
           if (userData?.profile?.stxAddress?.testnet) {
@@ -163,8 +160,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (error) {
           console.error("Error handling pending sign in:", error);
+          setHasInitialised(true);
         } finally {
-           setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
            setIsConnecting(false);
         }
       } else if (userSession.isUserSignedIn()) {
@@ -172,12 +169,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         if (userData.profile?.stxAddress?.testnet) {
           await fetchWalletData(userData.profile.stxAddress.testnet);
         } else {
-           setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
-           setIsConnecting(false);
+           setIsLoading(false);
+           setHasInitialised(true);
         }
       } else {
-        setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
-        setIsConnecting(false);
+        setIsLoading(false);
+        setHasInitialised(true);
       }
     };
 
@@ -185,8 +182,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchWalletData]);
 
   const value: WalletContextType = {
-    ...walletData,
-    isConnected: !!walletData.user,
+    user,
+    transactions,
+    missions,
+    isLoading,
+    hasInitialised,
+    isConnected: !!user,
     isConnecting,
     connect: connectWallet,
     disconnect: disconnectWallet,
