@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, {
@@ -229,7 +230,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     isConnecting,
     isConnected: !!user && !isLoading,
     connect,
-    disconnect,
+disconnect,
     claimBadge,
     refreshData,
   };
