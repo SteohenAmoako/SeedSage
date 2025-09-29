@@ -24,9 +24,9 @@ export interface WalletContextType {
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const HIRO_API_URL = 'https://api.testnet.hiro.so';
+const NETWORK = new StacksTestnet({ url: HIRO_API_URL });
 const BADGE_CONTRACT_ADDRESS = 'ST1PQEEMQ3ZGQ0B1P9P22A2VTK2C9404090ET002P';
 const BADGE_CONTRACT_NAME = 'seedsage-badge';
-const NETWORK = new StacksTestnet({ url: HIRO_API_URL });
 
 const appConfig = new AppConfig(['store_write', 'publish_data']);
 export const userSession = new UserSession({ appConfig });
@@ -41,11 +41,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const fetchWalletData = useCallback(async (stxAddress: string) => {
     setIsLoading(true);
     try {
-      // The /v2/accounts endpoint needs the chain parameter
       const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}?chain=testnet`);
       const balanceData = await balanceResponse.json();
 
-      // The /extended/v1/... endpoint knows the network from the URL subdomain
       const txsResponse = await fetch(`${HIRO_API_URL}/extended/v1/address/${stxAddress}/transactions`);
       const txsData = await txsResponse.json();
       const fetchedTransactions = txsData.results || [];
@@ -76,12 +74,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const handleSessionState = useCallback(async () => {
-    setIsConnecting(true);
     if (userSession.isSignInPending()) {
+      setIsConnecting(true);
       try {
         await userSession.handlePendingSignIn();
       } catch (e) {
         console.error("Pending sign-in handling failed:", e);
+      } finally {
+        setIsConnecting(false);
       }
     }
 
@@ -89,7 +89,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const userData = userSession.loadUserData();
       const stxAddress = userData.profile?.stxAddress?.testnet;
       if (stxAddress) {
-        await fetchWalletData(stxAddress);
+        if (!user || user.address !== stxAddress) {
+          await fetchWalletData(stxAddress);
+        } else {
+           setIsLoading(false);
+        }
+      } else {
+        // User is signed in but has no testnet address
+        // This can happen if they only have a mainnet address
+        userSession.signUserOut(); // Sign them out to avoid a confusing state
+        setUser(null);
+        setTransactions(null);
+        setMissions(missionDefs.map(m => ({...m, completed: false})));
+        setIsLoading(false);
       }
     } else {
         setUser(null);
@@ -97,8 +109,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setMissions(missionDefs.map(m => ({...m, completed: false})));
         setIsLoading(false);
     }
-    setIsConnecting(false);
-  }, [fetchWalletData]);
+  }, [fetchWalletData, user]);
 
   useEffect(() => {
     handleSessionState();
@@ -121,6 +132,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       onFinish: async () => {
         await handleSessionState();
         if (onFinishCallback) onFinishCallback();
+        setIsConnecting(false);
       },
       onCancel: () => {
         console.log("Connection cancelled.");
