@@ -20,7 +20,7 @@ export function TransactionExplainer({ transaction, open, onOpenChange }: { tran
   const [isLoading, setIsLoading] = React.useState(false);
 
   const handleExplain = async () => {
-    if (!transaction || !user) return;
+    if (!transaction || !user || !user.balance?.stx) return;
     setIsLoading(true);
     setExplanation(null);
 
