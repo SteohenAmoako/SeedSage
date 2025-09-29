@@ -77,6 +77,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const handleAuthentication = useCallback(
+    (stxAddress: string) => {
+      fetchWalletData(stxAddress);
+      setIsConnecting(false);
+    },
+    [fetchWalletData]
+  );
+
   const connectWallet = () => {
     setIsConnecting(true);
     showConnect({
@@ -85,13 +93,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         name: 'SeedSage',
         icon: window.location.origin + '/logo.png',
       },
-      onFinish: (payload) => {
-        const profile = payload.userSession.loadUserData();
-        const stxAddress = profile.profile.stxAddress.testnet;
-        if (stxAddress) {
-          fetchWalletData(stxAddress);
+      onFinish: () => {
+        if (userSession.isUserSignedIn()) {
+          const profile = userSession.loadUserData();
+          const stxAddress = profile.profile.stxAddress.testnet;
+          if (stxAddress) {
+            handleAuthentication(stxAddress);
+          }
         }
-        setIsConnecting(false);
       },
       onCancel: () => {
         setIsConnecting(false);
@@ -142,7 +151,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    if (userSession.isUserSignedIn()) {
+    if (userSession.isSignInPending()) {
+      userSession.handlePendingSignIn().then(userData => {
+        if(userData?.profile?.stxAddress?.testnet) {
+          handleAuthentication(userData.profile.stxAddress.testnet);
+        }
+      });
+    } else if (userSession.isUserSignedIn()) {
       const userData = userSession.loadUserData();
       if (userData.profile?.stxAddress?.testnet) {
         fetchWalletData(userData.profile.stxAddress.testnet);
@@ -154,7 +169,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setIsConnecting(false);
         setWalletData(prev => ({...prev, isLoading: false, hasInitialised: true}));
     }
-  }, [fetchWalletData]);
+  }, [fetchWalletData, handleAuthentication]);
 
   const value: WalletContextType = {
     ...walletData,
