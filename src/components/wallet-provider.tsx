@@ -69,123 +69,59 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  /**
-   * Detects if the address belongs to testnet or mainnet by trying both APIs
-   */
-  const detectNetworkAndFetch = useCallback(async (address: string) => {
+  const fetchWalletData = useCallback(async (stxAddress: string) => {
+    setIsLoading(true);
     try {
-      // Try testnet first
-      const testnetRes = await fetch(
-        `${TESTNET_API}/extended/v1/address/${address}/balances`
-      );
-      if (testnetRes.ok) {
-        const data = await testnetRes.json();
-        return { data, apiUrl: TESTNET_API, network: "testnet" };
-      }
+      // For this app, we are only concerned with testnet.
+      const network = "testnet";
+      const apiUrl = TESTNET_API;
 
-      // Fallback to mainnet
-      const mainnetRes = await fetch(
-        `${MAINNET_API}/extended/v1/address/${address}/balances`
-      );
-      if (mainnetRes.ok) {
-        const data = await mainnetRes.json();
-        return { data, apiUrl: MAINNET_API, network: "mainnet" };
+      // Fetch balance
+      const balanceUrl = new URL(`${apiUrl}/extended/v1/address/${stxAddress}/balances`);
+      if (network === 'testnet') {
+          balanceUrl.searchParams.set('chain', 'testnet');
       }
+      const balanceRes = await fetch(balanceUrl.toString());
+      if (!balanceRes.ok) throw new Error(`Failed to fetch balance: ${balanceRes.statusText}`);
+      const balanceData: StacksBalance = await balanceRes.json();
 
-      throw new Error("Unable to detect network for given address.");
-    } catch (err) {
-      console.error("Network detection failed:", err);
-      throw err;
+      // Fetch transactions
+      const txsUrl = new URL(`${apiUrl}/extended/v1/address/${stxAddress}/transactions`);
+      txsUrl.searchParams.set('limit', '50');
+      if (network === 'testnet') {
+          txsUrl.searchParams.set('chain', 'testnet');
+      }
+      const txsRes = await fetch(txsUrl.toString());
+       if (!txsRes.ok) throw new Error(`Failed to fetch transactions: ${txsRes.statusText}`);
+      const txsJson = await txsRes.json();
+      const fetchedTransactions: StacksTransaction[] = txsJson.results || [];
+
+      // Build user object
+      const userData: User = {
+        address: stxAddress,
+        network: network,
+        balance: balanceData,
+      };
+
+      // Verify missions based on real activity
+      const verifiedMissions = missionDefs.map((mission) => ({
+        ...mission,
+        completed: mission.verify(fetchedTransactions, userData.address),
+      }));
+
+      setUser(userData);
+      setTransactions(fetchedTransactions);
+      setMissions(verifiedMissions);
+    } catch (error) {
+      console.error("Failed to fetch wallet data:", error);
+      setUser(null);
+      setTransactions(null);
+      setMissions(missionDefs.map((m) => ({ ...m, completed: false })));
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  /**
-   * Parse balance from API response
-   */
-  const parseBalance = (balanceData: any): StacksBalance => {
-    const stxBalance = balanceData.stx?.balance || "0";
-    const stxLocked = balanceData.stx?.locked || "0";
-    const stxTotal = balanceData.stx?.total_sent || "0";
-    const stxReceived = balanceData.stx?.total_received || "0";
-    
-    // Convert from microSTX to STX (divide by 1,000,000)
-    const microStx = parseInt(stxBalance);
-    const lockedMicroStx = parseInt(stxLocked);
-    
-    return {
-      stx: {
-        balance: stxBalance,
-        locked: stxLocked,
-        total_sent: stxTotal,
-        total_received: stxReceived,
-      } as StacksBalance['stx'],
-      // Human readable values - These are not part of the type, so commenting out.
-      // balanceStx: (microStx / 1000000).toFixed(6),
-      // lockedStx: (lockedMicroStx / 1000000).toFixed(6),
-    };
-  };
-
-  /**
-   * Fetch balance + transactions + verify missions
-   */
-  const fetchWalletData = useCallback(
-    async (stxAddress: string) => {
-      setIsLoading(true);
-      try {
-        const { data: balanceData, apiUrl, network } =
-          await detectNetworkAndFetch(stxAddress);
-
-        console.log("Raw balance data:", balanceData); // Debug log
-
-        // Parse the balance properly
-        const parsedBalance = parseBalance(balanceData);
-        
-        console.log("Parsed balance:", parsedBalance); // Debug log
-
-        // Fetch transactions
-        const txsUrl = new URL(`${apiUrl}/extended/v1/address/${stxAddress}/transactions`);
-        txsUrl.searchParams.set('limit', '50');
-        if (network === 'testnet') {
-            txsUrl.searchParams.set('chain', 'testnet');
-        }
-
-        const txsRes = await fetch(txsUrl.toString());
-        const txsJson = await txsRes.json();
-        const fetchedTransactions: StacksTransaction[] = txsJson.results || [];
-
-        console.log("Fetched transactions:", fetchedTransactions.length); // Debug log
-
-        // Build user object
-        const userData: User = {
-          address: stxAddress,
-          network: network as 'testnet' | 'mainnet',
-          balance: parsedBalance,
-        };
-
-        // Verify missions based on real activity
-        const verifiedMissions = missionDefs.map((mission) => ({
-          ...mission,
-          completed: mission.verify(fetchedTransactions, userData.address),
-        }));
-
-        setUser(userData);
-        setTransactions(fetchedTransactions);
-        setMissions(verifiedMissions);
-      } catch (error) {
-        console.error("Failed to fetch wallet data:", error);
-        setUser(null);
-        setTransactions(null);
-        setMissions(missionDefs.map((m) => ({ ...m, completed: false })));
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [detectNetworkAndFetch]
-  );
-
-  /**
-   * Handle wallet session (sign in / sign out)
-   */
   const handleSessionState = useCallback(async () => {
     if (userSession.isSignInPending()) {
       setIsConnecting(true);
@@ -200,28 +136,25 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     if (userSession.isUserSignedIn()) {
       const userData = userSession.loadUserData();
-      const stxAddress =
-        userData.profile?.stxAddress?.testnet ||
-        userData.profile?.stxAddress?.mainnet;
-
+      const stxAddress = userData.profile?.stxAddress?.testnet || userData.profile?.stxAddress?.mainnet;
+      
       if (stxAddress) {
         if (!user || user.address !== stxAddress) {
-          await fetchWalletData(stxAddress);
+           await fetchWalletData(stxAddress);
         } else {
-          setIsLoading(false);
+            setIsLoading(false);
         }
       } else {
-        // Invalid state → force sign out
         userSession.signUserOut();
         setUser(null);
         setTransactions(null);
-        setMissions(missionDefs.map((m) => ({ ...m, completed: false })));
+        setMissions([]);
         setIsLoading(false);
       }
     } else {
       setUser(null);
       setTransactions(null);
-      setMissions(missionDefs.map((m) => ({ ...m, completed: false })));
+      setMissions([]);
       setIsLoading(false);
     }
   }, [fetchWalletData, user]);
@@ -230,18 +163,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     handleSessionState();
   }, [handleSessionState]);
 
-  /**
-   * Refresh wallet data
-   */
   const refreshData = useCallback(async () => {
     if (user) {
       await fetchWalletData(user.address);
     }
   }, [user, fetchWalletData]);
 
-  /**
-   * Connect wallet
-   */
   const connect = (onFinishCallback?: () => void) => {
     setIsConnecting(true);
     showConnect({
@@ -253,7 +180,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       onFinish: async () => {
         await handleSessionState();
         if (onFinishCallback) onFinishCallback();
-        setIsConnecting(false);
       },
       onCancel: () => {
         console.log("Connection cancelled.");
@@ -262,30 +188,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  /**
-   * Disconnect wallet
-   */
   const disconnect = () => {
     userSession.signUserOut();
     setUser(null);
     setTransactions(null);
-    setMissions(missionDefs.map((m) => ({ ...m, completed: false })));
+    setMissions([]);
   };
 
-  /**
-   * Claim on-chain badge
-   */
-  const claimBadge = async (): Promise<{
-    success: boolean;
-    txId?: string;
-    error?: string;
-  }> => {
+  const claimBadge = async (): Promise<{ success: boolean; txId?: string; error?: string; }> => {
     if (!user) return { success: false, error: "User not connected" };
 
-    const network =
-      user.network === "testnet"
-        ? new StacksTestnet({ url: TESTNET_API })
-        : new StacksMainnet({ url: MAINNET_API });
+    const network = new StacksTestnet({ url: TESTNET_API });
 
     return new Promise((resolve) => {
       const txOptions = {
@@ -307,8 +220,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       openContractCall(txOptions);
     });
   };
-
-  // ------------------ Context Value ------------------
 
   const value: WalletContextType = {
     user,
