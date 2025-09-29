@@ -39,6 +39,7 @@
     "@stacks/connect": "^7.8.0",
     "@stacks/network": "^6.14.0",
     "@stacks/transactions": "^6.14.0",
+    "@supabase/supabase-js": "^2.44.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
