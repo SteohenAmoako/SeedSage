@@ -1,4 +1,4 @@
-# Firebase Studio
+https://docs.stacks.co/understand-stacks/overview# Firebase Studio
 
 This is a NextJS starter in Firebase Studio.
 

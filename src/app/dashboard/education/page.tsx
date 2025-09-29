@@ -13,7 +13,7 @@ const educationResources = [
     title: "What is Stacks?",
     description: "Discover how Stacks brings smart contracts and decentralized applications to Bitcoin.",
     icon: Layers,
-    link: "https://docs.stacks.co/understand-stacks/overview"
+    link: "https://docs.stacks.co/concepts/stacks-101"
   },
   {
     title: "Choosing a Stacks Wallet",
