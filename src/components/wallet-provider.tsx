@@ -29,6 +29,7 @@ export const WalletContext = createContext<WalletContextType | undefined>(undefi
 const HIRO_API_URL = 'https://api.hiro.so';
 const BADGE_CONTRACT_ADDRESS = 'ST1PQEEMQ3ZGQ0B1P9P22A2VTK2C9404090ET002P';
 const BADGE_CONTRACT_NAME = 'seedsage-badge';
+const NETWORK = new StacksTestnet();
 
 const appConfig = new AppConfig(['store_write', 'publish_data']);
 const userSession = new UserSession({ appConfig });
@@ -43,7 +44,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const fetchWalletData = useCallback(async (stxAddress: string) => {
     setIsLoading(true);
     try {
-      const network = new StacksTestnet();
       const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}?chain=testnet`);
       const balanceData = await balanceResponse.json();
 
@@ -137,7 +137,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           contractName: BADGE_CONTRACT_NAME,
           functionName: 'claim',
           functionArgs: [stringUtf8CV("Claiming my SeedSage badge!")],
-          network: new StacksTestnet(),
+          network: NETWORK,
           anchorMode: AnchorMode.Any,
           postConditionMode: PostConditionMode.Deny,
         },
@@ -152,7 +152,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           await userSession.handlePendingSignIn();
         } catch (error) {
           console.error("Error handling pending sign in:", error);
-          setIsConnecting(false);
         }
       }
       
@@ -161,13 +160,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const stxAddress = userData.profile?.stxAddress?.testnet;
         if (stxAddress) {
           await fetchWalletData(stxAddress);
-        } else {
-           setIsLoading(false);
         }
-      } else {
-        setIsLoading(false);
       }
-       setIsConnecting(false);
+      
+      setIsLoading(false);
+      setIsConnecting(false);
     };
 
     handleUserSession();

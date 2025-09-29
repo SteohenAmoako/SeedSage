@@ -1,3 +1,4 @@
+
 "use client";
 
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
@@ -13,9 +14,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isConnected, isLoading } = useWallet();
+  const { isConnected, isLoading, isConnecting } = useWallet();
 
-  if (isLoading) {
+  if (isLoading || isConnecting) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-secondary/50">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
