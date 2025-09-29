@@ -8,19 +8,15 @@ import { StacksTestnet } from '@stacks/network';
 import { AnchorMode, PostConditionMode, stringUtf8CV } from '@stacks/transactions';
 import { missionDefs } from '@/lib/missions';
 
-interface WalletData {
+export interface WalletContextType {
   user: User | null;
   transactions: StacksTransaction[] | null;
-  missions: Mission[];
-}
-
-export interface WalletContextType extends WalletData {
-  isConnected: boolean;
+  missions: Mission[] | null;
   isLoading: boolean;
-  isConnecting: boolean;
+  isConnected: boolean;
   connect: (onFinish?: () => void) => void;
   disconnect: () => void;
-  claimBadge: () => Promise<{ success: boolean, txId?: string, error?: string }>;
+  claimBadge: () => Promise<{ success: boolean; txId?: string; error?: string }>;
   refreshData: () => Promise<void>;
 }
 
@@ -37,12 +33,10 @@ export const userSession = new UserSession({ appConfig });
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [transactions, setTransactions] = useState<StacksTransaction[] | null>(null);
-  const [missions, setMissions] = useState<Mission[]>(missionDefs);
+  const [missions, setMissions] = useState<Mission[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnecting, setIsConnecting] = useState(false);
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
-    setIsLoading(true);
     try {
       const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}?chain=testnet`);
       const balanceData = await balanceResponse.json();
@@ -69,47 +63,44 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to fetch wallet data:", error);
       setUser(null);
-      setTransactions([]);
+      setTransactions(null);
       setMissions(missionDefs);
-    } finally {
-      setIsLoading(false);
     }
   }, []);
-  
+
+  const handleSessionState = useCallback(async () => {
+    setIsLoading(true);
+    if (userSession.isSignInPending()) {
+      try {
+        await userSession.handlePendingSignIn();
+      } catch (e) {
+        console.error("Pending sign-in handling failed:", e);
+      }
+    }
+
+    if (userSession.isUserSignedIn()) {
+      const userData = userSession.loadUserData();
+      const stxAddress = userData.profile?.stxAddress?.testnet;
+      if (stxAddress) {
+        await fetchWalletData(stxAddress);
+      }
+    }
+    setIsLoading(false);
+  }, [fetchWalletData]);
+
+  useEffect(() => {
+    handleSessionState();
+  }, [handleSessionState]);
+
   const refreshData = useCallback(async () => {
     if (user) {
+      setIsLoading(true);
       await fetchWalletData(user.address);
+      setIsLoading(false);
     }
   }, [user, fetchWalletData]);
 
-  useEffect(() => {
-    const handleSession = async () => {
-        if (userSession.isSignInPending()) {
-            setIsConnecting(true);
-            try {
-                await userSession.handlePendingSignIn();
-            } catch(e) {
-                console.error(e);
-            } finally {
-                setIsConnecting(false);
-            }
-        }
-
-        if (userSession.isUserSignedIn()) {
-            const userData = userSession.loadUserData();
-            const stxAddress = userData.profile?.stxAddress?.testnet;
-            if (stxAddress) {
-                await fetchWalletData(stxAddress);
-            }
-        }
-        setIsLoading(false);
-    }
-    handleSession();
-  }, [fetchWalletData]);
-
-
   const connect = (onFinishCallback?: () => void) => {
-    setIsConnecting(true);
     showConnect({
       userSession,
       appDetails: {
@@ -117,26 +108,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         icon: window.location.origin + '/logo.png',
       },
       onFinish: async () => {
-        const userData = userSession.loadUserData();
-        const stxAddress = userData.profile?.stxAddress?.testnet;
-        if (stxAddress) {
-          await fetchWalletData(stxAddress);
-          if (onFinishCallback) onFinishCallback();
-        }
-        setIsConnecting(false);
+        await handleSessionState();
+        if (onFinishCallback) onFinishCallback();
       },
       onCancel: () => {
-        setIsConnecting(false);
+        console.log("Connection cancelled.");
       },
     });
   };
 
   const disconnect = () => {
-    if (userSession.isUserSignedIn()) {
-      userSession.signUserOut();
-    }
+    userSession.signUserOut();
     setUser(null);
-    setTransactions([]);
+    setTransactions(null);
     setMissions(missionDefs);
   };
 
@@ -174,7 +158,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     transactions,
     missions,
     isLoading: isLoading,
-    isConnecting: isConnecting,
     isConnected: !!user,
     connect,
     disconnect,

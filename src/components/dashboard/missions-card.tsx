@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,12 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import Link from "next/link";
 
-export function MissionsCard({ missions }: { missions: Mission[] }) {
-  const { claimBadge, isConnected } = useWallet();
+export function MissionsCard({ missions }: { missions: Mission[] | null }) {
+  const { claimBadge } = useWallet();
   const { toast } = useToast();
   const [isClaiming, setIsClaiming] = useState(false);
 
-  if (!isConnected || !missions) {
+  if (!missions) {
       return null;
   }
 

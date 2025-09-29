@@ -11,11 +11,11 @@ import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MissionsPage() {
-    const { missions, claimBadge, isLoading, isConnected } = useWallet();
+    const { missions, claimBadge, isLoading } = useWallet();
     const { toast } = useToast();
     const [isClaiming, setIsClaiming] = useState(false);
 
-    if (isLoading || !isConnected || !missions) {
+    if (isLoading || !missions) {
         return (
              <div className="space-y-8">
                 <Skeleton className="h-12 w-1/2" />
