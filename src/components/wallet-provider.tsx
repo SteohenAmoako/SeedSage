@@ -147,6 +147,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleUserSession = async () => {
+      setIsConnecting(true);
       if (userSession.isSignInPending()) {
         try {
           await userSession.handlePendingSignIn();
@@ -163,12 +164,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      setIsLoading(false);
       setIsConnecting(false);
+      setIsLoading(false);
     };
 
     handleUserSession();
-  }, [fetchWalletData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const value: WalletContextType = {
     user,
