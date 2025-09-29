@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, {
@@ -77,7 +76,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Try testnet first
       const testnetRes = await fetch(
-        `${TESTNET_API}/v2/accounts/${address}?chain=testnet`
+        `${TESTNET_API}/extended/v1/address/${address}/balances`
       );
       if (testnetRes.ok) {
         const data = await testnetRes.json();
@@ -85,7 +84,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Fallback to mainnet
-      const mainnetRes = await fetch(`${MAINNET_API}/v2/accounts/${address}`);
+      const mainnetRes = await fetch(
+        `${MAINNET_API}/extended/v1/address/${address}/balances`
+      );
       if (mainnetRes.ok) {
         const data = await mainnetRes.json();
         return { data, apiUrl: MAINNET_API, network: "mainnet" };
@@ -99,6 +100,32 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   /**
+   * Parse balance from API response
+   */
+  const parseBalance = (balanceData: any): StacksBalance => {
+    const stxBalance = balanceData.stx?.balance || "0";
+    const stxLocked = balanceData.stx?.locked || "0";
+    const stxTotal = balanceData.stx?.total_sent || "0";
+    const stxReceived = balanceData.stx?.total_received || "0";
+    
+    // Convert from microSTX to STX (divide by 1,000,000)
+    const microStx = parseInt(stxBalance);
+    const lockedMicroStx = parseInt(stxLocked);
+    
+    return {
+      stx: {
+        balance: stxBalance,
+        locked: stxLocked,
+        total_sent: stxTotal,
+        total_received: stxReceived,
+      } as StacksBalance['stx'],
+      // Human readable values - These are not part of the type, so commenting out.
+      // balanceStx: (microStx / 1000000).toFixed(6),
+      // lockedStx: (lockedMicroStx / 1000000).toFixed(6),
+    };
+  };
+
+  /**
    * Fetch balance + transactions + verify missions
    */
   const fetchWalletData = useCallback(
@@ -108,18 +135,31 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const { data: balanceData, apiUrl, network } =
           await detectNetworkAndFetch(stxAddress);
 
+        console.log("Raw balance data:", balanceData); // Debug log
+
+        // Parse the balance properly
+        const parsedBalance = parseBalance(balanceData);
+        
+        console.log("Parsed balance:", parsedBalance); // Debug log
+
         // Fetch transactions
-        const txsRes = await fetch(
-          `${apiUrl}/extended/v1/address/${stxAddress}/transactions${network === 'testnet' ? '?chain=testnet' : ''}`
-        );
+        const txsUrl = new URL(`${apiUrl}/extended/v1/address/${stxAddress}/transactions`);
+        txsUrl.searchParams.set('limit', '50');
+        if (network === 'testnet') {
+            txsUrl.searchParams.set('chain', 'testnet');
+        }
+
+        const txsRes = await fetch(txsUrl.toString());
         const txsJson = await txsRes.json();
         const fetchedTransactions: StacksTransaction[] = txsJson.results || [];
+
+        console.log("Fetched transactions:", fetchedTransactions.length); // Debug log
 
         // Build user object
         const userData: User = {
           address: stxAddress,
           network: network as 'testnet' | 'mainnet',
-          balance: balanceData as StacksBalance,
+          balance: parsedBalance,
         };
 
         // Verify missions based on real activity

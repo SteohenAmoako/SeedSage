@@ -9,16 +9,16 @@ export interface StacksBalance {
     balance: string;
     total_sent: string;
     total_received: string;
-    total_fees_sent: string;
-    total_miner_rewards_received: string;
-    lock_tx_id: any;
+    total_fees_sent?: string;
+    total_miner_rewards_received?: string;
+    lock_tx_id?: any;
     locked: string;
-    lock_height: number;
-    burnchain_lock_height: number;
-    burnchain_unlock_height: number;
+    lock_height?: number;
+    burnchain_lock_height?: number;
+    burnchain_unlock_height?: number;
   };
-  fungible_tokens: Record<string, any>;
-  non_fungible_tokens: Record<string, any>;
+  fungible_tokens?: Record<string, any>;
+  non_fungible_tokens?: Record<string, any>;
 }
 
 export interface StacksTransaction {
