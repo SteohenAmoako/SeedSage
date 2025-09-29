@@ -5,10 +5,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let supabase: SupabaseClient | null = null;
-if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('PASTE_YOUR_SUPABASE_URL_HERE')) {
+if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('YOUR_URL_HERE')) {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
-  console.warn('Supabase credentials for client are not configured. Read-only profile features may be disabled.');
+  console.warn('Supabase credentials for client are not configured. Profile features may be disabled.');
 }
 
 // Server-side (admin) client
