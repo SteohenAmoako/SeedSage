@@ -29,17 +29,17 @@ export const WalletContext = createContext<WalletContextType | undefined>(undefi
 const HIRO_API_URL = 'https://api.hiro.so';
 const BADGE_CONTRACT_ADDRESS = 'ST1PQEEMQ3ZGQ0B1P9P22A2VTK2C9404090ET002P';
 const BADGE_CONTRACT_NAME = 'seedsage-badge';
-const NETWORK = new StacksTestnet();
+const NETWORK = new StacksTestnet({ url: HIRO_API_URL });
 
 const appConfig = new AppConfig(['store_write', 'publish_data']);
-const userSession = new UserSession({ appConfig });
+export const userSession = new UserSession({ appConfig });
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [transactions, setTransactions] = useState<StacksTransaction[] | null>(null);
   const [missions, setMissions] = useState<Mission[]>(missionDefs);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
     setIsLoading(true);
@@ -82,22 +82,48 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, fetchWalletData]);
 
+  useEffect(() => {
+    const handleSession = async () => {
+        if (userSession.isSignInPending()) {
+            setIsConnecting(true);
+            try {
+                await userSession.handlePendingSignIn();
+            } catch(e) {
+                console.error(e);
+            } finally {
+                setIsConnecting(false);
+            }
+        }
 
-  const connectWallet = (onFinishCallback?: () => void) => {
+        if (userSession.isUserSignedIn()) {
+            const userData = userSession.loadUserData();
+            const stxAddress = userData.profile?.stxAddress?.testnet;
+            if (stxAddress) {
+                await fetchWalletData(stxAddress);
+            }
+        }
+        setIsLoading(false);
+    }
+    handleSession();
+  }, [fetchWalletData]);
+
+
+  const connect = (onFinishCallback?: () => void) => {
+    setIsConnecting(true);
     showConnect({
       userSession,
       appDetails: {
         name: 'SeedSage',
         icon: window.location.origin + '/logo.png',
       },
-      onFinish: () => {
+      onFinish: async () => {
         const userData = userSession.loadUserData();
         const stxAddress = userData.profile?.stxAddress?.testnet;
         if (stxAddress) {
-          fetchWalletData(stxAddress).then(() => {
-             if (onFinishCallback) onFinishCallback();
-          });
+          await fetchWalletData(stxAddress);
+          if (onFinishCallback) onFinishCallback();
         }
+        setIsConnecting(false);
       },
       onCancel: () => {
         setIsConnecting(false);
@@ -105,7 +131,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const disconnectWallet = () => {
+  const disconnect = () => {
     if (userSession.isUserSignedIn()) {
       userSession.signUserOut();
     }
@@ -143,30 +169,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  useEffect(() => {
-    const handleUserSession = async () => {
-      if (userSession.isSignInPending()) {
-        try {
-          await userSession.handlePendingSignIn();
-        } catch (error) {
-          console.error("Error handling pending sign in:", error);
-        }
-      }
-      
-      if (userSession.isUserSignedIn()) {
-        const userData = userSession.loadUserData();
-        const stxAddress = userData.profile?.stxAddress?.testnet;
-        if (stxAddress) {
-          await fetchWalletData(stxAddress);
-        }
-      }
-      
-      setIsConnecting(false);
-    };
-
-    handleUserSession();
-  }, [fetchWalletData]);
-
   const value: WalletContextType = {
     user,
     transactions,
@@ -174,8 +176,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     isLoading: isLoading,
     isConnecting: isConnecting,
     isConnected: !!user,
-    connect: connectWallet,
-    disconnect: disconnectWallet,
+    connect,
+    disconnect,
     claimBadge,
     refreshData,
   };
