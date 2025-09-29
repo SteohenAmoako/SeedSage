@@ -67,10 +67,10 @@ export function BalanceCard({ user }: { user: User }) {
               ) : (
                 <Droplets className="mr-2 h-4 w-4" />
               )}
-              {isFunding ? 'Sending...' : 'Get Testnet STX'}
+              {isFunding ? 'Requesting...' : 'Get Testnet STX'}
             </Button>
             <p className="text-xs text-muted-foreground mt-2">
-              Click to receive 5 free testnet STX to get started.
+              Click to receive free testnet STX from the public faucet.
             </p>
           </div>
         )}
