@@ -1,39 +1,45 @@
 "use client";
 
 import * as React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Zap, Shield, Book, Loader2 } from "lucide-react";
-import type { Transaction } from "@/lib/types";
-import { mockUser } from '@/lib/mock-data';
+import type { StacksTransaction } from "@/lib/types";
 import { explainTransactionAction } from '@/app/actions';
 import { useToast } from "@/hooks/use-toast";
 import type { ExplainTransactionOutput } from '@/ai/flows/explain-stacks-transactions';
+import { useWallet } from '@/hooks/use-wallet';
 
-export function TransactionExplainer({ transaction, open, onOpenChange }: { transaction: Transaction | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
+export function TransactionExplainer({ transaction, open, onOpenChange }: { transaction: StacksTransaction | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
   const { toast } = useToast();
+  const { user } = useWallet();
   const [explanation, setExplanation] = React.useState<ExplainTransactionOutput | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
   const handleExplain = async () => {
-    if (!transaction) return;
+    if (!transaction || !user) return;
     setIsLoading(true);
     setExplanation(null);
 
+    const balanceBefore = parseFloat(user.balance.stx.balance);
+    const amount = transaction.tx_type === 'token_transfer' ? parseFloat(transaction.token_transfer.amount) : 0;
+    const fee = parseFloat(transaction.fee_rate);
+    const balanceAfter = balanceBefore - (amount + fee);
+
     const input = {
-      address: mockUser.address,
-      network: mockUser.network,
-      balance_before: mockUser.balance.stx.balance,
-      balance_after: mockUser.balance.stx.balance - (transaction.amount + transaction.fee), // Simplified
-      txid: transaction.txid,
-      from: transaction.from,
-      to: transaction.to,
-      amount: transaction.amount,
-      fee: transaction.fee,
-      memo: transaction.memo || '',
+      address: user.address,
+      network: user.network,
+      balance_before: balanceBefore / 1_000_000,
+      balance_after: balanceAfter / 1_000_000,
+      txid: transaction.tx_id,
+      from: transaction.sender_address,
+      to: transaction.tx_type === 'token_transfer' ? transaction.token_transfer.recipient_address : 'N/A',
+      amount: amount / 1_000_000,
+      fee: fee / 1_000_000,
+      memo: transaction.tx_type === 'token_transfer' ? transaction.token_transfer.memo.replace('u', '') : '',
     };
 
     const result = await explainTransactionAction(input);
@@ -50,13 +56,20 @@ export function TransactionExplainer({ transaction, open, onOpenChange }: { tran
   };
   
   React.useEffect(() => {
+    if (open && transaction && !explanation && !isLoading) {
+      handleExplain();
+    }
     if (!open) {
       setExplanation(null);
       setIsLoading(false);
     }
-  }, [open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, transaction]);
 
   if (!transaction) return null;
+  
+  const amount = transaction.tx_type === 'token_transfer' ? parseFloat(transaction.token_transfer.amount) / 1_000_000 : 0;
+  const fee = parseFloat(transaction.fee_rate) / 1_000_000;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -69,13 +82,14 @@ export function TransactionExplainer({ transaction, open, onOpenChange }: { tran
             </SheetDescription>
           </SheetHeader>
           <div className="grid gap-4 py-4 pr-6">
-            <InfoRow label="Transaction ID" value={transaction.txid} />
-            <InfoRow label="From" value={transaction.from} />
-            <InfoRow label="To" value={transaction.to} />
-            <InfoRow label="Amount" value={`${transaction.amount.toLocaleString()} STX`} />
-            <InfoRow label="Fee" value={`${transaction.fee.toLocaleString()} STX`} />
-            <InfoRow label="Timestamp" value={new Date(transaction.timestamp).toLocaleString()} />
-            {transaction.memo && <InfoRow label="Memo" value={transaction.memo} />}
+            <InfoRow label="Transaction ID" value={transaction.tx_id} />
+            <InfoRow label="From" value={transaction.sender_address} />
+            {transaction.tx_type === 'token_transfer' && <InfoRow label="To" value={transaction.token_transfer.recipient_address} />}
+            {transaction.tx_type === 'contract_call' && <InfoRow label="Contract" value={transaction.contract_call.contract_id} />}
+            <InfoRow label="Amount" value={`${amount.toLocaleString()} STX`} />
+            <InfoRow label="Fee" value={`${fee.toLocaleString()} STX`} />
+            <InfoRow label="Timestamp" value={new Date(transaction.burn_block_time * 1000).toLocaleString()} />
+            {transaction.tx_type === 'token_transfer' && transaction.token_transfer.memo && <InfoRow label="Memo" value={transaction.token_transfer.memo.replace('u', '')} />}
           </div>
 
           <Separator className="my-4" />
@@ -124,7 +138,7 @@ export function TransactionExplainer({ transaction, open, onOpenChange }: { tran
           {!explanation && !isLoading && (
             <div className="pr-6">
               <Button onClick={handleExplain} className="w-full">
-                <Bot className="mr-2 h-4 w-4" /> Explain with AI
+                <Bot className="mr-2 h-4 w-4" /> Get AI Explanation
               </Button>
             </div>
           )}

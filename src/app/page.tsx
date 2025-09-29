@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Bot, Zap, BookOpen } from "lucide-react";
 import { Logo } from "@/components/icons";
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 
 export default function Home() {
   return (
@@ -12,9 +13,7 @@ export default function Home() {
           <Logo className="h-8 w-8 text-primary" />
           <h1 className="text-xl font-bold font-headline">SeedSage</h1>
         </div>
-        <Button asChild variant="ghost">
-          <Link href="/dashboard">Dashboard</Link>
-        </Button>
+        <WalletConnectButton />
       </header>
 
       <main className="flex-1">
@@ -27,12 +26,7 @@ export default function Home() {
               SeedSage is your friendly AI assistant for a smooth and secure start in the Stacks ecosystem. Understand transactions, master security, and explore with ease.
             </p>
             <div className="mt-8 flex justify-center gap-4">
-              <Button asChild size="lg" className="font-bold">
-                <Link href="/dashboard">Get Started (Connect Wallet)</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="font-bold">
-                <Link href="/dashboard">Try Demo (No Wallet)</Link>
-              </Button>
+              <WalletConnectButton />
             </div>
           </div>
         </section>
@@ -67,7 +61,7 @@ export default function Home() {
       </main>
 
       <footer className="bg-background border-t">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-muted-foreground">
+        <div className="container mx-auto px-4 sm:px-6 lg:_px-8 py-6 text-center text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} SeedSage. Made for the Stacks hackathon — testnet only.</p>
         </div>
       </footer>

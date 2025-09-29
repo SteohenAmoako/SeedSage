@@ -3,6 +3,8 @@ import { Wallet } from "lucide-react";
 import type { User } from "@/lib/types";
 
 export function BalanceCard({ user }: { user: User }) {
+  const stxBalance = user.balance.stx.balance / 1_000_000; // Convert from micro-STX
+  
   return (
     <Card>
       <CardHeader>
@@ -13,10 +15,10 @@ export function BalanceCard({ user }: { user: User }) {
         <CardDescription className="font-mono text-xs pt-2 break-all">{user.address}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="text-4xl font-bold">{user.balance.stx.balance.toLocaleString()} STX</div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <div className="text-4xl font-bold">{stxBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} STX</div>
+        {/* <p className="text-xs text-muted-foreground mt-1">
           ~ ${user.balance.stx.usd_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-        </p>
+        </p> */}
       </CardContent>
     </Card>
   );

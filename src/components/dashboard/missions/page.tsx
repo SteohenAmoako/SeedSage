@@ -11,11 +11,11 @@ import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MissionsPage() {
-    const { missions, claimBadge, isLoading } = useWallet();
+    const { missions, claimBadge, isLoading, isConnected } = useWallet();
     const { toast } = useToast();
     const [isClaiming, setIsClaiming] = useState(false);
 
-    if (isLoading || !missions) {
+    if (isLoading || !isConnected || !missions) {
         return (
              <div className="space-y-8">
                 <Skeleton className="h-12 w-1/2" />
@@ -31,8 +31,8 @@ export default function MissionsPage() {
 
     const completedMissions = missions.filter(m => m.completed).length;
     const totalMissions = missions.length;
-    const progress = (completedMissions / totalMissions) * 100;
-    const allComplete = completedMissions === totalMissions;
+    const progress = totalMissions > 0 ? (completedMissions / totalMissions) * 100 : 0;
+    const allComplete = completedMissions === totalMissions && totalMissions > 0;
 
     const handleClaim = async () => {
         setIsClaiming(true);
@@ -42,7 +42,19 @@ export default function MissionsPage() {
         if(result.success) {
             toast({
                 title: "Badge Claimed!",
-                description: `Transaction submitted: ${result.txId?.slice(0, 10)}...`,
+                description: (
+                    <p>
+                        Transaction submitted. You can view it on the{' '}
+                        <a 
+                            href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="underline"
+                        >
+                            explorer
+                        </a>.
+                    </p>
+                )
             });
         } else {
             toast({
@@ -59,7 +71,7 @@ export default function MissionsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Onboarding Missions</h1>
         <p className="text-muted-foreground mt-2">
-          Complete these tasks to learn about the Stacks ecosystem, earn rewards, and claim your on-chain badge.
+          Complete these tasks to learn about the Stacks ecosystem and claim your on-chain badge.
         </p>
       </div>
 
@@ -112,7 +124,7 @@ function MissionItem({ mission }: { mission: Mission }) {
             <span className="font-semibold">To-Do</span>
           </div>
         )}
-      </CardHeader>
+      </Header>
       <CardContent>
         <div className="text-sm font-semibold text-primary">Reward: {mission.reward} Points</div>
       </CardContent>

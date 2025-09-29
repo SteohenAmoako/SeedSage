@@ -1,18 +1,18 @@
 "use client";
 
 import * as React from 'react';
-import { Bot, Send, Loader2, CornerDownLeft } from "lucide-react";
+import { Bot, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from "@/hooks/use-toast";
 import { getChatResponseAction } from '@/app/actions';
-import { mockUser, mockTransactions } from '@/lib/mock-data';
 import type { ChatMessage } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { useWallet } from '@/hooks/use-wallet';
 
 const initialMessages: ChatMessage[] = [
   {
@@ -29,10 +29,11 @@ export function ChatWidget() {
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const { user, transactions } = useWallet();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !user || !transactions) return;
 
     const newUserMessage: ChatMessage = { id: Date.now().toString(), role: 'user', content: input };
     setMessages(prev => [...prev, newUserMessage]);
@@ -41,22 +42,25 @@ export function ChatWidget() {
 
     // Determine intent (simple keyword matching for demo)
     let intent_type: 'ask_question' | 'explain_tx' = 'ask_question';
-    if (input.toLowerCase().includes('explain') && input.toLowerCase().includes('transaction')) {
+    if (input.toLowerCase().includes('explain') && (input.toLowerCase().includes('transaction') || input.toLowerCase().includes('tx'))) {
       intent_type = 'explain_tx';
     }
     
-    const lastTx = mockTransactions[0];
+    const lastTx = transactions[0];
+    const balanceBefore = parseFloat(user.balance.stx.balance);
+    const balanceAfter = balanceBefore - ( (lastTx?.tx_type === 'token_transfer' ? parseFloat(lastTx.token_transfer.amount) : 0) + parseFloat(lastTx.fee_rate) );
+
     const context = {
-        address: mockUser.address,
-        network: mockUser.network,
-        balance_before: mockUser.balance.stx.balance,
-        balance_after: mockUser.balance.stx.balance - (lastTx.amount + lastTx.fee), // Simplified
-        txid: lastTx.txid,
-        from: lastTx.from,
-        to: lastTx.to,
-        amount: lastTx.amount,
-        fee: lastTx.fee,
-        memo: lastTx.memo,
+        address: user.address,
+        network: user.network,
+        balance_before: balanceBefore / 1_000_000,
+        balance_after: balanceAfter / 1_000_000,
+        txid: lastTx.tx_id,
+        from: lastTx.sender_address,
+        to: lastTx.tx_type === 'token_transfer' ? lastTx.token_transfer.recipient_address : 'N/A',
+        amount: lastTx.tx_type === 'token_transfer' ? parseFloat(lastTx.token_transfer.amount) / 1_000_000 : 0,
+        fee: parseFloat(lastTx.fee_rate) / 1_000_000,
+        memo: lastTx.tx_type === 'token_transfer' ? lastTx.token_transfer.memo : '',
         intent_type,
         message: input,
     };
@@ -84,9 +88,12 @@ export function ChatWidget() {
 
   React.useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+        const viewport = scrollAreaRef.current.querySelector('div');
+        if (viewport) {
+             viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        }
     }
-  }, [messages]);
+  }, [messages, isOpen]);
   
   return (
     <>
@@ -143,21 +150,21 @@ export function ChatWidget() {
                 )}
             </div>
           </ScrollArea>
-          <SheetFooter className="p-4 bg-background border-t">
+          <div className="p-4 bg-background border-t">
             <form onSubmit={handleSubmit} className="w-full relative">
               <Input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 placeholder="Ask SeedSage..."
                 className="pr-12"
-                disabled={isLoading}
+                disabled={isLoading || !user}
               />
-              <Button type="submit" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" disabled={isLoading || !input.trim()}>
+              <Button type="submit" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" disabled={isLoading || !input.trim() || !user}>
                 <Send className="h-4 w-4" />
                 <span className="sr-only">Send</span>
               </Button>
             </form>
-          </SheetFooter>
+          </div>
         </SheetContent>
       </Sheet>
     </>
