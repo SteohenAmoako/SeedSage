@@ -1,9 +1,10 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 export interface UserProfile {
   username: string;
 }
 
+// This function runs on the client
 export const getProfile = async (userId: string): Promise<UserProfile | null> => {
   if (!supabase) return null; // Gracefully handle no-config case
 
@@ -14,29 +15,32 @@ export const getProfile = async (userId: string): Promise<UserProfile | null> =>
       .eq('id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+    // PGRST116: No rows found. This is not an error for us.
+    if (error && error.code !== 'PGRST116') {
       throw error;
     }
 
-    if (data) {
-      return data as UserProfile;
-    }
-
-    return null;
+    return data ? (data as UserProfile) : null;
 
   } catch (error) {
-    console.error('Error getting document:', error);
+    console.error('Error getting profile:', error);
     return null;
   }
 };
 
+
+// This function should only be called from a server action
 export const saveProfile = async (userId: string, profile: UserProfile): Promise<boolean> => {
-  if (!supabase) return false; // Gracefully handle no-config case
+  // Use the admin client to bypass RLS
+  if (!supabaseAdmin) {
+    console.error("Supabase admin client not initialized. Cannot save profile.");
+    return false;
+  }
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('profiles')
-      .upsert({ id: userId, username: profile.username });
+      .upsert({ id: userId, username: profile.username, updated_at: new Date().toISOString() });
 
     if (error) {
       throw error;
@@ -44,7 +48,7 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
     
     return true;
   } catch (error) {
-    console.error('Error writing document:', error);
+    console.error('Error saving profile:', error);
     return false;
   }
 };

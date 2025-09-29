@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProfile, saveProfile } from "@/services/profile";
+import { getProfile } from "@/services/profile";
+import { saveProfileAction } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -38,10 +39,10 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     if (!user?.address) return;
     setIsSaving(true);
-    const success = await saveProfile(user.address, { username });
+    const result = await saveProfileAction(user.address, { username });
     setIsSaving(false);
     
-    if (success) {
+    if (result.success) {
       toast({
         title: "Profile Saved",
         description: "Your username has been updated.",
@@ -50,7 +51,7 @@ export default function SettingsPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not save your profile. Please try again.",
+        description: result.error || "Could not save your profile. Please try again.",
       });
     }
   };
