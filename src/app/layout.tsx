@@ -2,13 +2,20 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AppProviders } from '@/components/app-providers';
-import { Inter as FontSans } from "next/font/google"
+import { PT_Sans, Source_Code_Pro } from "next/font/google"
 import { cn } from '@/lib/utils';
 
-const fontSans = FontSans({
+const fontSans = PT_Sans({
   subsets: ["latin"],
+  weight: ["400", "700"],
   variable: "--font-sans",
-})
+});
+
+const fontMono = Source_Code_Pro({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
 
 export const metadata: Metadata = {
   title: 'SeedSage',
@@ -22,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}>
+      <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable, fontMono.variable)}>
         <AppProviders>
           {children}
           <Toaster />

@@ -30,16 +30,28 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/icons";
 import { useWallet } from "@/hooks/use-wallet";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getProfile, UserProfile } from "@/services/profile";
 
 export function DashboardHeader() {
-  const { disconnect, refreshData } = useWallet();
+  const { user, disconnect, refreshData } = useWallet();
   const pathname = usePathname();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const { toast } = useToast();
   
+  useEffect(() => {
+    async function fetchProfile() {
+      if (user?.address) {
+        const userProfile = await getProfile(user.address);
+        setProfile(userProfile);
+      }
+    }
+    fetchProfile();
+  }, [user?.address]);
+
   const getBreadcrumbPage = () => {
     const path = pathname.split('/').pop();
     if (!path || path === 'dashboard') return 'Overview';
@@ -145,12 +157,14 @@ export function DashboardHeader() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>{profile?.username || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem disabled>Support</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href="https://docs.stacks.co" target="_blank" rel="noopener noreferrer">Support</a>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={disconnect}>Logout</DropdownMenuItem>
           </DropdownMenuContent>

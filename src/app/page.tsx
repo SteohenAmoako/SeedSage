@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between animate-fade-in-down">
         <Link href="/" className="flex items-center gap-2">
           <Logo className="h-8 w-8 text-primary" />
           <h1 className="text-xl font-bold font-headline">SeedSage</h1>
@@ -22,7 +22,7 @@ export default function Home() {
 
       <main className="flex-1">
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 text-center">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto animate-fade-in-up">
              <div className="inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-semibold text-primary mb-4">
               Unlock the Bitcoin Economy with Stacks
             </div>
@@ -49,31 +49,37 @@ export default function Home() {
                 icon={<Shield className="h-8 w-8" />}
                 title="Security-First Onboarding"
                 description="Learn the fundamentals of seed phrases and wallet security in a guided wizard before you even connect."
+                delay={100}
               />
               <FeatureCard
                 icon={<Bot className="h-8 w-8" />}
                 title="AI-Powered Clarity"
                 description="Get simple, human-readable summaries of your on-chain activity and ask questions to our context-aware AI assistant."
+                delay={200}
               />
               <FeatureCard
                 icon={<Zap className="h-8 w-8" />}
                 title="Learn by Doing"
                 description="Complete gamified missions to familiarize yourself with Stacks, from sending tokens to interacting with smart contracts."
+                delay={300}
               />
               <FeatureCard
                 icon={<Layers className="h-8 w-8" />}
                 title="Built on Stacks"
                 description="Directly interact with the Stacks blockchain, from fetching live data to claiming an on-chain NFT badge."
+                delay={400}
               />
                <FeatureCard
                 icon={<BookOpen className="h-8 w-8" />}
                 title="Curated Education"
                 description="Access a hand-picked list of high-quality resources to continue your learning journey in the ecosystem."
+                delay={500}
               />
               <FeatureCard
                 icon={<CheckCircle className="h-8 w-8" />}
                 title="Hackathon Ready"
                 description="Built to showcase how AI can accelerate dApp development on Stacks, fulfilling the Vibe Coding vision."
+                delay={600}
               />
             </div>
           </div>
@@ -81,7 +87,7 @@ export default function Home() {
       </main>
 
       <footer className="bg-background border-t">
-        <div className="container mx-auto px-4 sm:px-6 lg:_px-8 py-6 text-center text-muted-foreground">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} SeedSage. Built for the Stacks Vibe Coding Hackathon.</p>
         </div>
       </footer>
@@ -89,9 +95,12 @@ export default function Home() {
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({ icon, title, description, delay = 0 }: { icon: React.ReactNode, title: string, description: string, delay?: number }) {
   return (
-    <Card className="text-center bg-card shadow-sm hover:shadow-lg transition-shadow duration-300">
+    <Card 
+      className="text-center bg-card shadow-sm hover:shadow-lg transition-shadow duration-300 animate-fade-in-up"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <CardHeader>
         <div className="mx-auto bg-primary/10 text-primary p-4 rounded-full w-fit">
           {icon}
