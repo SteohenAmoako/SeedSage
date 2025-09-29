@@ -22,7 +22,7 @@ export interface WalletContextType {
 
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-const HIRO_API_URL = 'https://api.hiro.so';
+const HIRO_API_URL = 'https://api.testnet.hiro.so';
 const BADGE_CONTRACT_ADDRESS = 'ST1PQEEMQ3ZGQ0B1P9P22A2VTK2C9404090ET002P';
 const BADGE_CONTRACT_NAME = 'seedsage-badge';
 const NETWORK = new StacksTestnet({ url: HIRO_API_URL });
@@ -38,10 +38,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchWalletData = useCallback(async (stxAddress: string) => {
     try {
-      const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}?chain=testnet`);
+      const balanceResponse = await fetch(`${HIRO_API_URL}/v2/accounts/${stxAddress}`);
       const balanceData = await balanceResponse.json();
 
-      const txsResponse = await fetch(`${HIRO_API_URL}/extended/v1/address/${stxAddress}/transactions?chain=testnet`);
+      const txsResponse = await fetch(`${HIRO_API_URL}/extended/v1/address/${stxAddress}/transactions`);
       const txsData = await txsResponse.json();
       const fetchedTransactions = txsData.results || [];
 
